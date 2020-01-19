@@ -1,3 +1,4 @@
+// Did this work?
 #include <Arduino.h>
 #include <BLEDevice.h>
 #include <BLEUtils.h>
@@ -40,7 +41,7 @@ class MyCallbacks: public BLECharacteristicCallbacks {
 
         for (int i = 0; i < rxValue.length(); i++) {
           Serial.print(rxValue[i]);
-        } Serial.println(); // Do stuff based on the command received from the app 
+        } Serial.println(); // Do stuff based on the command received from the app
         if (rxValue.find("ON") != -1) {
           Serial.println("Turning ON!");
           digitalWrite(LED, HIGH);
@@ -53,13 +54,13 @@ class MyCallbacks: public BLECharacteristicCallbacks {
         Serial.println("*********");
     }
   }
-}; 
-    
-void setup() { 
-  Serial.begin(9600); 
-  pinMode(LED, OUTPUT); // Create the BLE Device 
-  BLEDevice::init("MRCP Node"); // Give it a name 
-  // Create the BLE Server 
+};
+
+void setup() {
+  Serial.begin(9600);
+  pinMode(LED, OUTPUT); // Create the BLE Device
+  BLEDevice::init("MRCP Node"); // Give it a name
+  // Create the BLE Server
   BLEServer *pServer = BLEDevice::createServer();
   pServer->setCallbacks(new MyServerCallbacks());
 
@@ -69,10 +70,10 @@ void setup() {
   // Create a BLE Characteristic
   pCharacteristic = pService->createCharacteristic(
                       CHARACTERISTIC_UUID_TX,
-                      BLECharacteristic::PROPERTY_NOTIFY | 
+                      BLECharacteristic::PROPERTY_NOTIFY |
                       BLECharacteristic::PROPERTY_READ
                     );
-                      
+
   pCharacteristic->addDescriptor(new BLE2902());
 
   BLECharacteristic *pCharacteristic = pService->createCharacteristic(
@@ -103,11 +104,11 @@ void loop() {
     // Let's convert the value to a char array:
     char txString[8]; // make sure this is big enuffz
     dtostrf(txValue, 1, 2, txString); // float_val, min_width, digits_after_decimal, char_buffer
-    
+
 //    pCharacteristic->setValue(&txValue, 1); // To send the integer value
 //    pCharacteristic->setValue("Hello!"); // Sending a test message
     pCharacteristic->setValue(txString);
-    
+
     pCharacteristic->notify(); // Send the value to the app!
     Serial.print("*** Sent Value: ");
     Serial.print(txString);
