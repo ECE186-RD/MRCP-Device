@@ -22,7 +22,6 @@ class MRCPMeter : public MRCPNode{
       void onConnect(BLEServer* pServer) {
        node->deviceConnected = true;
        Serial.println("Connected to Client");
-       node->sendFloat(node->rate);
       };
 
       void onDisconnect(BLEServer* pServer) {
@@ -47,10 +46,17 @@ class MRCPMeter : public MRCPNode{
           for (int i = 0; i < rxValue.length(); i++) {
             Serial.print(rxValue[i]);
           }
-          if (rxValue.find("START") != -1) {
-            node->sendString("START");
-            node->timeStarted = true;
+          Serial.println();
+          if (rxValue.find("REQ_START") != -1) {
+            node->sendString("ACK_START");
             node->previousTime = millis();
+            node->timeStarted = true;
+          }else if(rxValue.find("REQ_RATE") != -1){
+            node->sendFloat(node->rate);
+          }else if(rxValue.find("ACK_RATE") != -1){
+            
+          }else if(rxValue.find("ACK_STOP") != -1){
+            
           }
       }
     };
@@ -71,7 +77,7 @@ class MRCPMeter : public MRCPNode{
         if(this->timeStarted){
           unsigned long currentTime = millis();
           if(currentTime - this->previousTime >= 20000){
-            this->sendString("STOP");
+            this->sendString("REQ_STOP");
             this->timeStarted = false;
           }
         }

@@ -82,7 +82,7 @@ class MRCPNode{
           pCharacteristic->notify(); // Send the value to the app!
           Serial.print("*** Sent Float: ");
           Serial.print(txString);
-          Serial.println(" ***");
+          Serial.println();
         }
 
         void sendString(std::string value){
@@ -91,6 +91,7 @@ class MRCPNode{
           pCharacteristic->notify(); // Send the value to the app!
           Serial.print("*** Sent String: ");
           Serial.print(value.c_str());
+          Serial.println();
         }
 
         virtual void loop(){
