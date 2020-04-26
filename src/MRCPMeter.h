@@ -19,28 +19,26 @@ const int ledRed = 18;
 const int ledGreen = 17;
 const int ledBlue = 16;
 
-std::string delimiter = ","; // Probably Dont need, Delete Russell?
-//const double rate = 1/36; // Based off of cost $0.25 per 15 min, but per seconds
+int state = 0;
+int sonicSensor_init = 0;
+int initialDistance = 0;
 
 time_t start;
 double duration;  // double or time_t?
 
-// 10 seconds is just for testing, ideally 300 seconds?
+// 10 seconds is just for testing/demo, ideally 300 seconds (5 min)?
 double violationTimeLimit = 10;  // Grace period before violation (seconds)
 
 double sonicSensor = 1;
-    //  float rate = 2;
-
 
 class MRCPMeter : public MRCPNode{
     public:
       bool deviceConnected = false;
       static const int LED = 2;
-      float rate = 2;
+      float rate = 5; // Set the cost ($) per hour here
       bool timeStarted = false;
       unsigned long previousTime;
       int sonicSensor_init;
-
 
   class MRCPMeterServerCallbacks: public BLEServerCallbacks {
     public:
@@ -81,48 +79,19 @@ class MRCPMeter : public MRCPNode{
           Serial.println();
           if (rxValue.find("REQ_START") != -1) {
             // State: s3 = Valid Parking, LED = Blink Green
+            state = 3;
             node->sendString("ACK_START");
             node->previousTime = millis();
             node->timeStarted = true;
-            int sonicSensor_init;
-            //sonicSensor_init = node.readRange(); // Read in sensor value now
-            sonicSensor_init = readRange();
-
-            while((sonicSensor_init + tolerance) >= distance) {
-                        /*
-                         Will stay in this loop until sensor reads a further distance which means the car has left
-                         Not closer since someone may walk infront of meter
-                         Could account for Tape attack
-                         */
-                         // State: s3 = Valid Parking
-                         distance = readRange();
-
-
-                         while(distance < minDetectionDistance){
-                           // State: s4 = Maintance Required (VALID), LED = Solid Green
-                           // If sensor gets obstructed, then stay here until resolved.
-                           digitalWrite(ledGreen, HIGH);
-                           distance = readRange();
-                         }
-
-                         digitalWrite(ledGreen, HIGH);
-                         delay(500);
-                         digitalWrite(ledGreen, LOW);
-                    }
-
-                    duration = difftime( time(0), start);  // Stopping the clock
-                    Serial.println("Stopping!");
-                    Serial.println(duration);
-                    double totalCost = round(duration * (node->rate));  // Total cost to customer
-                    // process payment?
-                    Serial.println(totalCost);
-
+            node -> sonicSensor_init = readRange();
 
           }else if(rxValue.find("REQ_RATE") != -1){
             node->sendFloat(node->rate);
           }else if(rxValue.find("ACK_RATE") != -1){
             // Do we need this? Could just have the REQ_START act as an ACK
           }else if(rxValue.find("ACK_STOP") != -1){
+            //Reset ESP32
+            ESP.restart(); // Not sure if this works
 
           }
       }
@@ -157,52 +126,81 @@ class MRCPMeter : public MRCPNode{
         Serial.print("Distance: ");
         Serial.println(distance);
 
-        if (distance < maxDetectionDistance) {
-          while(distance < minDetectionDistance){
-            // State: s5 = Maintance Required (Invalid Parking), LED = Solid Red
-            // If sensor gets obstructed, then stay here until resolved.
-            digitalWrite(ledRed, HIGH);
-            distance = readRange();
-          }
-            digitalWrite(ledRed, LOW);
 
-            int initialDistance = distance; // Saving the distance the car is currently at
-            start = time(0);     // Restarting the clock
-            while(distance <= (initialDistance+tolerance)){
-              duration = difftime( time(0), start);
-              if(duration >= violationTimeLimit){
-                // State: s2 = violation, LED = Blink RED
+        if(state == 3) {
+                 // State: s3 = Valid Parking
+                 distance = readRange();
+
+                 if(distance < minDetectionDistance){
+                   // State: s4 = Maintance Required (VALID), LED = Solid Green
+                   // If sensor gets obstructed, then stay here until resolved.
+                   digitalWrite(ledGreen, HIGH);
+                   distance = readRange();
+                 }
+                 else if(distance>(sonicSensor_init+tolerance))
+                 {
+                   duration = difftime( time(0), start);  // Stopping the clock
+                   Serial.println("Stopping!");
+                   Serial.println(duration);
+                   double totalCost = round(duration * (rate));  // Total cost to customer
+                   // process payment?
+                   Serial.println(totalCost);
+
+                   sendString("REQ_STOP");
+                   state = 0;
+                 }else{
+                   digitalWrite(ledGreen, HIGH);
+                   delay(500);
+                   digitalWrite(ledGreen, LOW);
+                 }
+
+            }else if (distance < maxDetectionDistance) {
+              if(distance < minDetectionDistance){
+                // State: s5 = Maintance Required (Invalid Parking), LED = Solid Red
+                // If sensor gets obstructed, then stay here until resolved.
                 digitalWrite(ledRed, HIGH);
-                delay(250);
-                digitalWrite(ledRed, LOW);
-                delay(250);
-              }
+                distance = readRange();
+                }
               else{
-                // State: s1 = standby, LED = Blink Yellow
-                digitalWrite(ledGreen, HIGH);
-                digitalWrite(ledBlue, HIGH);
-                digitalWrite(ledRed, HIGH);
-                delay(500);
-                digitalWrite(ledGreen, LOW);
-                digitalWrite(ledBlue, LOW);
                 digitalWrite(ledRed, LOW);
-                delay(500);
+
+                if(state == 0){
+                  initialDistance = distance; // Saving the distance the car is currently at
+                  start = time(0);     // Restarting the clock
+                }
+
+                if(distance <= (initialDistance+tolerance)){
+                  duration = difftime( time(0), start);
+                  if(duration >= violationTimeLimit){
+                    // State: s2 = violation, LED = Blink RED
+                    state = 2;
+                    digitalWrite(ledRed, HIGH);
+                    delay(250);
+                    digitalWrite(ledRed, LOW);
+                    delay(250);
+                    }
+                else{
+                  // State: s1 = standby, LED = Blink Yellow
+                  state = 1;
+                  digitalWrite(ledGreen, HIGH);
+                  digitalWrite(ledBlue, HIGH);
+                  digitalWrite(ledRed, HIGH);
+                  delay(500);
+                  digitalWrite(ledGreen, LOW);
+                  digitalWrite(ledBlue, LOW);
+                  digitalWrite(ledRed, LOW);
+                  delay(500);
+                }
               }
               distance = readRange();
             }
         }
+        else{
+          state = 0;
+
+        }
         // else, State: s0 = Available, LED = off
         delay(100);
-
-
-        if(this->timeStarted){
-          unsigned long currentTime = millis();
-          if(currentTime - this->previousTime >= 20000){
-            this->sendString("REQ_STOP");
-            this->timeStarted = false;
-          }
-        }
-
       }
 };
 
