@@ -1,14 +1,12 @@
 #include <Arduino.h>
-#include <BLEDevice.h>
-#include <BLEUtils.h>
-#include <BLEServer.h>
-#include <BLE2902.h>
 #include <MRCPLock.h>
+#include <MRCPMeter.h>
 
-MRCPLock* node;
+MRCPNode* node;
 
 void setup() {
-    node = new MRCPLock();
+    //node = new MRCPLock();
+    node = new MRCPMeter();
     node->setup();
 }
 

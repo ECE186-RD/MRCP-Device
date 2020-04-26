@@ -26,13 +26,15 @@ class MRCPNode{
         BLECharacteristic *pCharacteristic;
 
     public:
-        MRCPNode();
+        MRCPNode(){
+          
+        }
         MRCPNode(String name, BLECharacteristicCallbacks* characteristic_callbacks, BLECharacteristic *pCharacteristic){
           this->characteristic_callbacks = characteristic_callbacks;
           this->server_callbacks = server_callbacks;
           this->name = name;
         }
-        void setup(){
+        virtual void setup(){
           Serial.begin(9600);
           BLEDevice::init(this->name.c_str()); // Give it a name
           // Create the BLE Server
@@ -68,10 +70,30 @@ class MRCPNode{
                     pAdvertising->setMinPreferred(0x06);  // functions that help with iPhone connections issue
                     pAdvertising->setMinPreferred(0x12);
                     BLEDevice::startAdvertising();
-          Serial.print("Waiting a client connection to notify...");
+          Serial.println("Waiting a client connection to notify...");
         }
 
-        void loop(){
+        void sendFloat(float value, int size = 8){
+          char txString[size]; // make sure this is big enuffz
+          dtostrf(value, 1, 2, txString); // float_val, min_width, digits_after_decimal, char_buffer
+
+          pCharacteristic->setValue(txString);
+
+          pCharacteristic->notify(); // Send the value to the app!
+          Serial.print("*** Sent Float: ");
+          Serial.print(txString);
+          Serial.println(" ***");
+        }
+
+        void sendString(std::string value){
+          pCharacteristic->setValue(value.c_str());
+
+          pCharacteristic->notify(); // Send the value to the app!
+          Serial.print("*** Sent String: ");
+          Serial.print(value.c_str());
+        }
+
+        virtual void loop(){
           
         }
 };
