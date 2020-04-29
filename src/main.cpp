@@ -5,8 +5,8 @@
 MRCPNode* node;
 
 void setup() {
-    //node = new MRCPLock();
-    node = new MRCPMeter();
+    node = new MRCPLock();
+    //node = new MRCPMeter();
     node->setup();
 }
 
