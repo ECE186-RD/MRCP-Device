@@ -31,11 +31,12 @@ class MRCPNode{
       StaticJsonDocument<256> rx_doc, tx_doc;
       //Firebase
       String firebase_host = "<project>.firebaseio.com";
-      String firebase_auth = "<database auth token>";
-      String wifi_ssid = "<AP SSID>";
-      String wifi_password = "<AP password>";
+      String firebase_auth = "<db_auth>";
+      String wifi_ssid = "<AP_SSID";
+      String wifi_password = "<AP_password>";
       String uid = "u3RBOUI2kXUy2ZQFfN2oLHxgdjI3";
       FirebaseData firebase_data;
+      bool bypass_security = true;
       String auth_token;
       StaticJsonDocument<256> client_doc;
       StaticJsonDocument<256> ui_info_doc;
@@ -118,19 +119,24 @@ class MRCPNode{
               pAdvertising->setMinPreferred(0x06);  // functions that help with iPhone connections issue
               pAdvertising->setMinPreferred(0x12);
               BLEDevice::startAdvertising();
-    WiFi.begin(wifi_ssid.c_str(), wifi_password.c_str());
-    Serial.print("Connecting to Wi-Fi");
-    while (WiFi.status() != WL_CONNECTED)
-    {
-      Serial.print(".");
-      delay(300);
+    if(bypass_security){
+
+    }else{
+      WiFi.begin(wifi_ssid.c_str(), wifi_password.c_str());
+      Serial.print("Connecting to Wi-Fi");
+      while (WiFi.status() != WL_CONNECTED)
+      {
+        Serial.print(".");
+        delay(300);
+      }
+      Serial.println();
+      Serial.print("Connected with IP: ");
+      Serial.println(WiFi.localIP());
+      Serial.println();
+      Firebase.begin(firebase_host, firebase_auth);
+      Firebase.reconnectWiFi(true);
     }
-    Serial.println();
-    Serial.print("Connected with IP: ");
-    Serial.println(WiFi.localIP());
-    Serial.println();
-    Firebase.begin(firebase_host, firebase_auth);
-    Firebase.reconnectWiFi(true);
+    
 
     Serial.println("Waiting a client connection to notify...");
   }
@@ -162,10 +168,12 @@ class MRCPNode{
         if(rx_doc["type"] == "ACK"){
           tx_doc = ui_info_doc;
           sendDoc(tx_doc);
-          if(!Firebase.setString(firebase_data, "/users/"+uid+"/authToken", "invalid"))
-          {
-            Serial.print("Error in setString, ");
-            Serial.println(firebase_data.errorReason());
+          if(!bypass_security){
+            if(!Firebase.setString(firebase_data, "/users/"+uid+"/authToken", "invalid"))
+            {
+              Serial.print("Error in setString, ");
+              Serial.println(firebase_data.errorReason());
+            }
           }
         }
       }
@@ -173,42 +181,53 @@ class MRCPNode{
   }
 
   void authenticateClient(){
-    String recieved_uid = client_doc["uid"];
-    String recieved_token = client_doc["token"];
-    if(Firebase.getString(firebase_data, "/users/"+recieved_uid+"/authToken"))
-    {
-      if(firebase_data.stringData() != "invalid" && firebase_data.stringData() == recieved_token){
-        uint8_t uuid_array[16];
-        ESPRandom::uuid(uuid_array);
-        auth_token = ESPRandom::uuidToString(uuid_array);
-        if(Firebase.setString(firebase_data, "/users/"+uid+"/authToken", auth_token))
-        {
-          client_authenticated = true;
-          authenticating_client = false;
-          onClientAuthenticated();
+    if(bypass_security){
+      uint8_t uuid_array[16];
+      ESPRandom::uuid(uuid_array);
+      auth_token = ESPRandom::uuidToString(uuid_array);
+      onClientAuthenticated();
+      client_authenticated = true;
+      authenticating_client = false;
+    }else{
+      String recieved_uid = client_doc["uid"];
+      String recieved_token = client_doc["token"];
+      if(Firebase.getString(firebase_data, "/users/"+recieved_uid+"/authToken"))
+      {
+        if(firebase_data.stringData() != "invalid" && firebase_data.stringData() == recieved_token){
+          uint8_t uuid_array[16];
+          ESPRandom::uuid(uuid_array);
+          auth_token = ESPRandom::uuidToString(uuid_array);
+          if(Firebase.setString(firebase_data, "/users/"+uid+"/authToken", auth_token))
+          {
+            client_authenticated = true;
+            authenticating_client = false;
+            onClientAuthenticated();
+          }else{
+            Serial.print("Error in setString, ");
+            Serial.println(firebase_data.errorReason());
+          }
         }else{
-          Serial.print("Error in setString, ");
-          Serial.println(firebase_data.errorReason());
+          client_authenticated = false;
+          authenticating_client = false;
+          Serial.println("Authentication Failed");
+          Serial.println("firebase_data.stringData()="+firebase_data.stringData());
+          Serial.println("recieved_token="+recieved_token);
         }
       }else{
-        client_authenticated = false;
-        authenticating_client = false;
-        Serial.println("Authentication Failed");
-      }
-    }else{
-      Serial.print("Error in getString, ");
-      Serial.println(firebase_data.errorReason());
-      if(!Firebase.setString(firebase_data, "/users/"+uid+"/authToken", "invalid"))
-        {
-          Serial.print("Error in setString, ");
-          Serial.println(firebase_data.errorReason());
-          if(firebase_data.errorReason() == "connection refused"){
-            authenticating_client = false;
-            tx_doc["type"] = "ERROR";
-            tx_doc["error"] = "Database Connection Refused";
-            sendDoc(tx_doc);
+        Serial.print("Error in getString, ");
+        Serial.println(firebase_data.errorReason());
+        if(!Firebase.setString(firebase_data, "/users/"+uid+"/authToken", "invalid"))
+          {
+            Serial.print("Error in setString, ");
+            Serial.println(firebase_data.errorReason());
+            if(firebase_data.errorReason() == "connection refused"){
+              authenticating_client = false;
+              tx_doc["type"] = "ERROR";
+              tx_doc["error"] = "Database Connection Refused";
+              sendDoc(tx_doc);
+            }
           }
-        }
+      }
     }
   }
 
