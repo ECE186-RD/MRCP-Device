@@ -111,9 +111,11 @@ class MRCPMeter : public MRCPNode{
                    sendDoc(tx_doc);
                    state = 0;
                  }else{
-                   digitalWrite(ledGreen, HIGH);
-                   delay(500);
-                   digitalWrite(ledGreen, LOW);
+                  if(millis() % 1000 > 500){
+                    digitalWrite(ledGreen, LOW);
+                  }else{
+                    digitalWrite(ledGreen, HIGH);
+                  }
                  }
 
             }else if (distance < maxDetectionDistance) {
@@ -136,22 +138,24 @@ class MRCPMeter : public MRCPNode{
                   if(duration >= violationTimeLimit){
                     // State: s2 = violation, LED = Blink RED
                     state = 2;
-                    digitalWrite(ledRed, HIGH);
-                    delay(250);
-                    digitalWrite(ledRed, LOW);
-                    delay(250);
-                    }
+                    if(millis() % 500 > 250){
+                     digitalWrite(ledRed, LOW);
+                    }else{
+                     digitalWrite(ledRed, HIGH);
+                    };
+                  }
                 else{
                   // State: s1 = standby, LED = Blink Yellow
                   state = 1;
-                  digitalWrite(ledGreen, HIGH);
-                  digitalWrite(ledBlue, HIGH);
-                  digitalWrite(ledRed, HIGH);
-                  delay(500);
-                  digitalWrite(ledGreen, LOW);
-                  digitalWrite(ledBlue, LOW);
-                  digitalWrite(ledRed, LOW);
-                  delay(500);
+                  if(millis() % 1000 > 500){
+                    digitalWrite(ledGreen, HIGH);
+                    digitalWrite(ledBlue, HIGH);
+                    digitalWrite(ledRed, HIGH);
+                  }else{
+                    digitalWrite(ledGreen, LOW);
+                    digitalWrite(ledBlue, LOW);
+                    digitalWrite(ledRed, LOW);
+                  }
                 }
               }
               distance = readRange();
