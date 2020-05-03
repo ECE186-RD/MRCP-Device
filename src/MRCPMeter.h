@@ -78,8 +78,8 @@ class MRCPMeter : public MRCPNode{
 
       void loop(){
         MRCPNode::loop();
-
-        distance = readRange();
+        if(client_authenticated){
+          distance = readRange();
 
         if(distance > 40) // Used for Testing
           digitalWrite(LED, HIGH);
@@ -163,5 +163,6 @@ class MRCPMeter : public MRCPNode{
         }
         // else, State: s0 = Available, LED = off
         delay(100);
+        }
       }
 };
