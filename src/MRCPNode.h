@@ -28,6 +28,9 @@ class MRCPNode{
       BLEServerCallbacks* server_callbacks;
       BLECharacteristic *pCharacteristic;
       bool deviceConnected = false;
+      unsigned long tx_check_time = 0;
+      bool notifying_client = false;
+      std::string tx_str = "";
       StaticJsonDocument<256> rx_doc, tx_doc;
       //Firebase
       String firebase_host = "<project>.firebaseio.com";
@@ -260,20 +263,27 @@ class MRCPNode{
   }
 
   void sendDoc(StaticJsonDocument<256> doc){
-    std::string value;
-    serializeJson(doc, value);
-    pCharacteristic->setValue(value.c_str());
-    pCharacteristic->notify(); // Send the value to the app!
+    serializeJson(doc, tx_str);
     Serial.print("*** Sent Doc: ");
-    Serial.print(value.c_str());
-    Serial.println();
     tx_doc.clear();
   }
 
   virtual void loop(){
     if(authenticating_client && millis() >= auth_check_time){
       authenticateClient();
-      auth_check_time = millis() + 2000;
+      auth_check_time = millis() + 2000; 
+    }
+    if(tx_str != "" && millis() >= tx_check_time){
+      int tx_len = 20;
+      if(tx_str.length() < tx_len){
+        tx_len = tx_str.length();
+      }
+      pCharacteristic->setValue(tx_str.substr(0, tx_len).c_str());
+      Serial.print(tx_str.substr(0, tx_len).c_str());
+      if(tx_str.substr(tx_len-1) == "}") Serial.println();
+      pCharacteristic->notify(); // Send the value to the app!
+      tx_str = tx_str.substr(tx_len);
+      tx_check_time = millis()+100;
     }
   }
 };
