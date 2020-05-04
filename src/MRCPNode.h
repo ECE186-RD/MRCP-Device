@@ -35,7 +35,7 @@ class MRCPNode{
       //Firebase
       String firebase_host = "<project>.firebaseio.com";
       String firebase_auth = "<db_auth>";
-      String wifi_ssid = "<AP_SSID";
+      String wifi_ssid = "<AP_SSID>";
       String wifi_password = "<AP_password>";
       String uid = "u3RBOUI2kXUy2ZQFfN2oLHxgdjI3";
       FirebaseData firebase_data;
@@ -263,9 +263,11 @@ class MRCPNode{
   }
 
   void sendDoc(StaticJsonDocument<256> doc){
-    serializeJson(doc, tx_str);
-    Serial.print("*** Sent Doc: ");
-    tx_doc.clear();
+    if(tx_str == ""){
+      serializeJson(doc, tx_str);
+      Serial.print("*** Sent Doc: ");
+      tx_doc.clear();
+    }
   }
 
   virtual void loop(){

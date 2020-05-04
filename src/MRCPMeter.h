@@ -45,6 +45,7 @@ class MRCPMeter : public MRCPNode{
         pinMode (ledRed, OUTPUT);
         pinMode (ledGreen, OUTPUT);
         pinMode (ledBlue, OUTPUT);
+        ui_info_doc["rate"] = rate;
       }
 
       void onBLEWrite() {
